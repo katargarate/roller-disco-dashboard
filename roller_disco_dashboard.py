@@ -1,52 +1,28 @@
 import streamlit as st
 import pandas as pd
-import psycopg2
+from supabase import create_client
 import plotly.express as px
 
 # --------------------------
-# Database connection setup
+# Supabase client setup
 # --------------------------
-def get_connection():
-    return psycopg2.connect(
-        host=st.secrets["postgres"]["host"],
-        database=st.secrets["postgres"]["database"],
-        user=st.secrets["postgres"]["user"],
-        password=st.secrets["postgres"]["password"],
-        port=st.secrets["postgres"]["port"],
-        sslmode="require"
-    )
+url = st.secrets["supabase"]["url"]
+key = st.secrets["supabase"]["anon_key"]  # read-only anon key
+supabase = create_client(url, key)
 
 # --------------------------
 # Load data from your views
 # --------------------------
 @st.cache_data
 def load_data():
-    conn = get_connection()
-    df_progress = pd.read_sql("""
-        SELECT 
-            year,
-            slot,
-            update_date,
-            days_before_event,
-            days_since_on_sale,
-            sold,
-            spectators
-        FROM vw_sales_progression
-    """, conn)
-    df_summary = pd.read_sql("""
-        SELECT 
-            year,
-            od_sold,
-            od_scanned,
-            od_guestlist,
-            od_ak,
-            lnd_sold,
-            lnd_scanned,
-            lnd_guestlist,
-            lnd_ak
-        FROM vw_final_attendance
-    """, conn)
-    conn.close()
+    # vw_sales_progression
+    data_progress = supabase.table("vw_sales_progression").select("*").execute()
+    df_progress = pd.DataFrame(data_progress.data)
+
+    # vw_final_attendance
+    data_summary = supabase.table("vw_final_attendance").select("*").execute()
+    df_summary = pd.DataFrame(data_summary.data)
+
     return df_progress, df_summary
 
 df_progress, df_summary = load_data()
@@ -106,8 +82,7 @@ st.markdown("Track ticket sales progress, guestlists, Abendkasse tickets, and sc
 # --------------------------
 # Sidebar: Year selection
 # --------------------------
-years = list(df_progress["year"].unique())
-years.sort()
+years = sorted(df_progress["year"].unique().tolist())
 years.insert(0, "Overall")
 year_selected = st.sidebar.selectbox("Select Year", years)
 
