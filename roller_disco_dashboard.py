@@ -112,7 +112,7 @@ else:
 # --------------------------
 # Mobile-friendly figure helper
 # --------------------------
-def mobile_friendly_fig(fig):
+def mobile_friendly_fig(fig, wide_mode=True):
     fig.update_layout(
         plot_bgcolor=BACKGROUND_COLOR,
         paper_bgcolor=BACKGROUND_COLOR,
@@ -126,9 +126,13 @@ def mobile_friendly_fig(fig):
         yaxis_tickfont_size=12,
         margin=dict(l=40, r=40, t=60, b=60),
         hovermode="x unified",
-        autosize=True
+        autosize=False,
+        width=1200 if wide_mode else None,  # make chart wider than container
+        height=500
     )
-    fig.update_traces(line=dict(width=4), marker=dict(size=12))
+    fig.update_traces(line=dict(width=3), marker=dict(size=8))  # smaller markers so they don’t overlap
+    fig.update_xaxes(fixedrange=False)  # allow scrolling/zooming on mobile
+    fig.update_yaxes(fixedrange=False)
     return fig
 
 # --------------------------
