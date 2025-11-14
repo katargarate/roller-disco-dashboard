@@ -7,32 +7,35 @@ import plotly.express as px
 # Supabase client setup
 # --------------------------
 url = st.secrets["supabase"]["url"]
-key = st.secrets["supabase"]["anon_key"]
+key = st.secrets["supabase"]["anon_key"]  # read-only anon key
 supabase = create_client(url, key)
 
 # --------------------------
-# Load data from Supabase
+# Load data from your views
 # --------------------------
 @st.cache_data
 def load_data():
+    # vw_sales_progression
     data_progress = supabase.table("vw_sales_progression").select("*").execute()
     df_progress = pd.DataFrame(data_progress.data)
+
+    # vw_final_attendance
     data_summary = supabase.table("vw_final_attendance").select("*").execute()
     df_summary = pd.DataFrame(data_summary.data)
+
     return df_progress, df_summary
 
 df_progress, df_summary = load_data()
 
 # --------------------------
-# High contrast dark theme colors
+# Colors and Page Config
 # --------------------------
-PRIMARY_COLOR = "#FF00FF"      # bright magenta
-ACCENT_COLOR = "#00FFFF"       # cyan
-BACKGROUND_COLOR = "#121212"   # dark gray
-SIDEBAR_COLOR = "#1E1E1E"
-TEXT_COLOR = "#FFFFFF"          # white
-HIGHLIGHT_COLOR = "#FFD700"    # bright gold
-WARNING_COLOR = "#FF4500"      # bright orange/red
+PRIMARY_COLOR = "#9c83fd"     # Lilac
+ACCENT_COLOR = "#EC4899"      # Hot pink
+BACKGROUND_COLOR = "#110f49"  # Dark background for high contrast
+SIDEBAR_COLOR = "#1c1d2c"     # Dark grey sidebar
+TEXT_COLOR = "#F9FAFB"        # Light text
+HIGHLIGHT_COLOR = "#F59E0B"   # Bright yellow-orange
 
 st.set_page_config(
     page_title="Roller Disco Dashboard",
@@ -41,55 +44,85 @@ st.set_page_config(
 )
 
 # --------------------------
-# Global Styling
+# Styling
 # --------------------------
 st.markdown(f"""
     <style>
-        /* App background and text */
         .stApp {{
             background-color: {BACKGROUND_COLOR};
             color: {TEXT_COLOR};
         }}
-        /* Sidebar */
         .stSidebar {{
             background-color: {SIDEBAR_COLOR};
             color: {TEXT_COLOR};
         }}
-        /* Headers */
         h1, h2, h3, h4 {{
             color: {PRIMARY_COLOR} !important;
         }}
-        /* Dataframes */
         .stDataFrame div {{
             color: {TEXT_COLOR} !important;
             font-weight: 600;
         }}
-        /* Links */
+        .css-1lcbmhc p, .css-1v0mbdj {{
+            color: {TEXT_COLOR} !important;
+            font-weight: 600;
+        }}
         a {{
             color: {ACCENT_COLOR};
             font-weight: 600;
-        }}
-        /* Sidebar widgets (dropdowns, radios, sliders) */
-        .stSelectbox, .stRadio, .stSlider {{
-            color: {TEXT_COLOR} !important;
-            background-color: {SIDEBAR_COLOR} !important;
-        }}
-        /* Buttons */
-        .stButton>button {{
-            background-color: {PRIMARY_COLOR} !important;
-            color: {TEXT_COLOR} !important;
         }}
     </style>
 """, unsafe_allow_html=True)
 
 # --------------------------
+# Helper: mobile-friendly figure
+# --------------------------
+def mobile_friendly_fig(fig, wide_mode=True):
+    # layout updates (same as before)
+    fig.update_layout(
+        plot_bgcolor=BACKGROUND_COLOR,
+        paper_bgcolor=BACKGROUND_COLOR,
+        font_color=TEXT_COLOR,
+        title_font_size=22,
+        title_y=0.95,
+        legend_font_size=14,
+        xaxis_title_font_size=16,
+        yaxis_title_font_size=16,
+        xaxis_tickangle=-45,
+        xaxis_tickfont_size=12,
+        yaxis_tickfont_size=12,
+        margin=dict(l=40, r=40, t=140, b=60),
+        hovermode="x unified",
+        autosize=False,
+        width=1200 if wide_mode else None,
+        height=500,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.1,
+            xanchor="center",
+            x=0.5
+        )
+    )
+
+    # only update line & marker for scatter traces
+    for trace in fig.data:
+        if trace.type == "scatter":
+            trace.update(line=dict(width=3), marker=dict(size=8))
+        elif trace.type == "bar":
+            trace.update(marker=dict(line=dict(width=0)))  # optional: remove bar outlines
+
+    return fig
+
+
+
+# --------------------------
 # Layout
 # --------------------------
 st.title("🪩 Roller Disco Ticket Dashboard")
-st.markdown("Track ticket sales progress, guestlists, Abendkasse tickets, and scanned tickets across years.")
 
 # --------------------------
-# Sidebar selections
+# Sidebar
 # --------------------------
 years = sorted(df_progress["year"].unique().tolist())
 years.insert(0, "Overall")
@@ -110,40 +143,6 @@ else:
     summary = df_summary.copy()
 
 # --------------------------
-# Mobile-friendly figure helper
-# --------------------------
-def mobile_friendly_fig(fig, wide_mode=True):
-    fig.update_layout(
-        plot_bgcolor=BACKGROUND_COLOR,
-        paper_bgcolor=BACKGROUND_COLOR,
-        font_color=TEXT_COLOR,
-        title_font_size=22,
-        legend_font_size=14,
-        xaxis_title_font_size=16,
-        yaxis_title_font_size=16,
-        xaxis_tickangle=-45,
-        xaxis_tickfont_size=12,
-        yaxis_tickfont_size=12,
-        margin=dict(l=40, r=40, t=60, b=60),
-        hovermode="x unified",
-        autosize=False,
-        width=1200 if wide_mode else None,
-        height=500,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5
-        )
-    )
-    fig.update_traces(line=dict(width=3), marker=dict(size=8))
-    fig.update_xaxes(fixedrange=False)
-    fig.update_yaxes(fixedrange=False)
-    return fig
-
-
-# --------------------------
 # Single Year Chart
 # --------------------------
 if year_selected != "Overall":
@@ -154,7 +153,7 @@ if year_selected != "Overall":
         df_caps = summary.copy()
         df_caps["od_capacity"] = df_caps["od_sold"] + df_caps["od_guestlist"]
         df_caps["lnd_capacity"] = df_caps["lnd_sold"] + df_caps["lnd_guestlist"]
-        df_plot = df_plot.merge(df_caps[["od_capacity", "lnd_capacity"]], left_index=True, right_index=True, how="left")
+        df_plot = df_plot.merge(df_caps[["year", "od_capacity", "lnd_capacity"]], on="year", how="left")
 
         def calc_percentage(row):
             return row["sold"] / row["od_capacity"] * 100 if row["slot"].lower() == "open disco" else row["sold"] / row["lnd_capacity"] * 100
@@ -178,7 +177,8 @@ if year_selected != "Overall":
     )
     if x_column == "days_before_event":
         fig.update_xaxes(autorange="reversed")
-    st.plotly_chart(mobile_friendly_fig(fig), use_container_width=True)
+    fig = mobile_friendly_fig(fig, wide_mode=False)
+    st.plotly_chart(fig, use_container_width=True)
 
 # --------------------------
 # Multi-Year Comparison
@@ -210,7 +210,8 @@ if year_selected == "Overall":
         )
         if x_column == "days_before_event":
             fig_multi.update_xaxes(autorange="reversed")
-        st.plotly_chart(mobile_friendly_fig(fig_multi), use_container_width=True)
+        fig_multi = mobile_friendly_fig(fig_multi, wide_mode=False)
+        st.plotly_chart(fig_multi, use_container_width=True)
 
 # --------------------------
 # Key Takeaways
@@ -218,14 +219,22 @@ if year_selected == "Overall":
 if year_selected != "Overall":
     st.subheader(f"📊 Key Takeaways — {year_selected}")
 
-    def get_col(df, col_name):
-        return int(df[col_name].iloc[0]) if col_name in df.columns else 0
 
+    def get_col(df, col_name):
+        if col_name in df.columns:
+            val = df[col_name].iloc[0]
+            return int(val) if pd.notna(val) else 0
+        else:
+            return 0
+
+
+    # Open Disco
     od_sold = get_col(summary, "od_sold")
     od_scanned = get_col(summary, "od_scanned")
     od_guestlist = get_col(summary, "od_guestlist")
     od_abendkasse = get_col(summary, "od_ak")
 
+    # Late Night Disco
     lnd_sold = get_col(summary, "lnd_sold")
     lnd_scanned = get_col(summary, "lnd_scanned")
     lnd_guestlist = get_col(summary, "lnd_guestlist")
@@ -247,6 +256,7 @@ if year_selected != "Overall":
         st.markdown(f"**Abendkasse:** {lnd_abendkasse}")
         st.markdown(f"**Scanned:** {lnd_scanned}/{lnd_sold + lnd_guestlist}")
 
+    # Spectators
     if "spectators" in filtered.columns:
         with st.expander("Show Spectator Numbers"):
             fig2 = px.bar(
@@ -256,7 +266,8 @@ if year_selected != "Overall":
                 title="Spectator Ticket Sales Over Time",
                 color_discrete_sequence=[HIGHLIGHT_COLOR]
             )
-            st.plotly_chart(mobile_friendly_fig(fig2), use_container_width=True)
+            fig2 = mobile_friendly_fig(fig2, wide_mode=False)
+            st.plotly_chart(fig2, use_container_width=True)
 
 st.markdown("---")
-st.caption("Built with ❤️ by Kat / Space Quads")
+st.caption("Built with 💜 by Kat / Space Quads")
