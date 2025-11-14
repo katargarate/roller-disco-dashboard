@@ -11,7 +11,7 @@ key = st.secrets["supabase"]["anon_key"]
 supabase = create_client(url, key)
 
 # --------------------------
-# Load data from your views
+# Load data from Supabase
 # --------------------------
 @st.cache_data
 def load_data():
@@ -24,14 +24,15 @@ def load_data():
 df_progress, df_summary = load_data()
 
 # --------------------------
-# Colors and Page Config (High Contrast)
+# High contrast dark theme colors
 # --------------------------
-PRIMARY_COLOR = "#FFDD00"   # Bright yellow
-ACCENT_COLOR = "#FF3300"    # Bright red
-BACKGROUND_COLOR = "#111111" # Dark background
-SIDEBAR_COLOR = "#222222"    # Slightly lighter dark for sidebar
-TEXT_COLOR = "#FFFFFF"       # White text
-HIGHLIGHT_COLOR = "#00FFFF"  # Bright cyan
+PRIMARY_COLOR = "#FF00FF"      # bright magenta
+ACCENT_COLOR = "#00FFFF"       # cyan
+BACKGROUND_COLOR = "#121212"   # dark gray
+SIDEBAR_COLOR = "#1E1E1E"
+TEXT_COLOR = "#FFFFFF"          # white
+HIGHLIGHT_COLOR = "#FFD700"    # bright gold
+WARNING_COLOR = "#FF4500"      # bright orange/red
 
 st.set_page_config(
     page_title="Roller Disco Dashboard",
@@ -40,31 +41,43 @@ st.set_page_config(
 )
 
 # --------------------------
-# Styling
+# Global Styling
 # --------------------------
 st.markdown(f"""
     <style>
+        /* App background and text */
         .stApp {{
             background-color: {BACKGROUND_COLOR};
             color: {TEXT_COLOR};
         }}
+        /* Sidebar */
         .stSidebar {{
             background-color: {SIDEBAR_COLOR};
+            color: {TEXT_COLOR};
         }}
+        /* Headers */
         h1, h2, h3, h4 {{
             color: {PRIMARY_COLOR} !important;
         }}
+        /* Dataframes */
         .stDataFrame div {{
             color: {TEXT_COLOR} !important;
             font-weight: 600;
         }}
-        .css-1lcbmhc p, .css-1v0mbdj {{
-            color: {TEXT_COLOR} !important;
-            font-weight: 600;
-        }}
+        /* Links */
         a {{
             color: {ACCENT_COLOR};
             font-weight: 600;
+        }}
+        /* Sidebar widgets (dropdowns, radios, sliders) */
+        .stSelectbox, .stRadio, .stSlider {{
+            color: {TEXT_COLOR} !important;
+            background-color: {SIDEBAR_COLOR} !important;
+        }}
+        /* Buttons */
+        .stButton>button {{
+            background-color: {PRIMARY_COLOR} !important;
+            color: {TEXT_COLOR} !important;
         }}
     </style>
 """, unsafe_allow_html=True)
@@ -76,7 +89,7 @@ st.title("🪩 Roller Disco Ticket Dashboard")
 st.markdown("Track ticket sales progress, guestlists, Abendkasse tickets, and scanned tickets across years.")
 
 # --------------------------
-# Sidebar: Year selection
+# Sidebar selections
 # --------------------------
 years = sorted(df_progress["year"].unique().tolist())
 years.insert(0, "Overall")
@@ -95,6 +108,28 @@ if year_selected != "Overall":
 else:
     filtered = df_progress.copy()
     summary = df_summary.copy()
+
+# --------------------------
+# Mobile-friendly figure helper
+# --------------------------
+def mobile_friendly_fig(fig):
+    fig.update_layout(
+        plot_bgcolor=BACKGROUND_COLOR,
+        paper_bgcolor=BACKGROUND_COLOR,
+        font_color=TEXT_COLOR,
+        title_font_size=22,
+        legend_font_size=14,
+        xaxis_title_font_size=16,
+        yaxis_title_font_size=16,
+        xaxis_tickangle=-45,
+        xaxis_tickfont_size=12,
+        yaxis_tickfont_size=12,
+        margin=dict(l=40, r=40, t=60, b=60),
+        hovermode="x unified",
+        autosize=True
+    )
+    fig.update_traces(line=dict(width=4), marker=dict(size=12))
+    return fig
 
 # --------------------------
 # Single Year Chart
@@ -131,8 +166,7 @@ if year_selected != "Overall":
     )
     if x_column == "days_before_event":
         fig.update_xaxes(autorange="reversed")
-    fig.update_layout(plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR, font_color=TEXT_COLOR)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(mobile_friendly_fig(fig), use_container_width=True)
 
 # --------------------------
 # Multi-Year Comparison
@@ -160,12 +194,11 @@ if year_selected == "Overall":
             markers=True,
             title=f"{slot} Ticket Sales Across Years",
             labels={x_column: x_axis_mode, y_column: y_label, "year": "Year"},
-            color_discrete_sequence=[PRIMARY_COLOR, ACCENT_COLOR, HIGHLIGHT_COLOR]
+            color_discrete_sequence=px.colors.qualitative.Vivid
         )
         if x_column == "days_before_event":
             fig_multi.update_xaxes(autorange="reversed")
-        fig_multi.update_layout(plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR, font_color=TEXT_COLOR)
-        st.plotly_chart(fig_multi, use_container_width=True)
+        st.plotly_chart(mobile_friendly_fig(fig_multi), use_container_width=True)
 
 # --------------------------
 # Key Takeaways
@@ -176,13 +209,11 @@ if year_selected != "Overall":
     def get_col(df, col_name):
         return int(df[col_name].iloc[0]) if col_name in df.columns else 0
 
-    # Open Disco
     od_sold = get_col(summary, "od_sold")
     od_scanned = get_col(summary, "od_scanned")
     od_guestlist = get_col(summary, "od_guestlist")
     od_abendkasse = get_col(summary, "od_ak")
 
-    # Late Night Disco
     lnd_sold = get_col(summary, "lnd_sold")
     lnd_scanned = get_col(summary, "lnd_scanned")
     lnd_guestlist = get_col(summary, "lnd_guestlist")
@@ -204,7 +235,6 @@ if year_selected != "Overall":
         st.markdown(f"**Abendkasse:** {lnd_abendkasse}")
         st.markdown(f"**Scanned:** {lnd_scanned}/{lnd_sold + lnd_guestlist}")
 
-    # Spectators
     if "spectators" in filtered.columns:
         with st.expander("Show Spectator Numbers"):
             fig2 = px.bar(
@@ -214,8 +244,7 @@ if year_selected != "Overall":
                 title="Spectator Ticket Sales Over Time",
                 color_discrete_sequence=[HIGHLIGHT_COLOR]
             )
-            fig2.update_layout(plot_bgcolor=BACKGROUND_COLOR, paper_bgcolor=BACKGROUND_COLOR, font_color=TEXT_COLOR)
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(mobile_friendly_fig(fig2), use_container_width=True)
 
 st.markdown("---")
 st.caption("Built with ❤️ by Kat / Space Quads")
