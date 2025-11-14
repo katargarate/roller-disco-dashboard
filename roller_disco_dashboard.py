@@ -7,7 +7,7 @@ import plotly.express as px
 # Supabase client setup
 # --------------------------
 url = st.secrets["supabase"]["url"]
-key = st.secrets["supabase"]["anon_key"]  # read-only anon key
+key = st.secrets["supabase"]["anon_key"]
 supabase = create_client(url, key)
 
 # --------------------------
@@ -15,27 +15,23 @@ supabase = create_client(url, key)
 # --------------------------
 @st.cache_data
 def load_data():
-    # vw_sales_progression
     data_progress = supabase.table("vw_sales_progression").select("*").execute()
     df_progress = pd.DataFrame(data_progress.data)
-
-    # vw_final_attendance
     data_summary = supabase.table("vw_final_attendance").select("*").execute()
     df_summary = pd.DataFrame(data_summary.data)
-
     return df_progress, df_summary
 
 df_progress, df_summary = load_data()
 
 # --------------------------
-# Colors and Page Config
+# Colors and Page Config (High Contrast)
 # --------------------------
-PRIMARY_COLOR = "#7C3AED"
-ACCENT_COLOR = "#EC4899"
-BACKGROUND_COLOR = "#F5F5F5"
-SIDEBAR_COLOR = "#E5E7EB"
-TEXT_COLOR = "#111827"
-HIGHLIGHT_COLOR = "#C8A2C8"
+PRIMARY_COLOR = "#FFDD00"   # Bright yellow
+ACCENT_COLOR = "#FF3300"    # Bright red
+BACKGROUND_COLOR = "#111111" # Dark background
+SIDEBAR_COLOR = "#222222"    # Slightly lighter dark for sidebar
+TEXT_COLOR = "#FFFFFF"       # White text
+HIGHLIGHT_COLOR = "#00FFFF"  # Bright cyan
 
 st.set_page_config(
     page_title="Roller Disco Dashboard",
@@ -164,7 +160,7 @@ if year_selected == "Overall":
             markers=True,
             title=f"{slot} Ticket Sales Across Years",
             labels={x_column: x_axis_mode, y_column: y_label, "year": "Year"},
-            color_discrete_sequence=px.colors.qualitative.Vivid
+            color_discrete_sequence=[PRIMARY_COLOR, ACCENT_COLOR, HIGHLIGHT_COLOR]
         )
         if x_column == "days_before_event":
             fig_multi.update_xaxes(autorange="reversed")
