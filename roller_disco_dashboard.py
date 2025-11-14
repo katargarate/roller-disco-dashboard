@@ -127,13 +127,21 @@ def mobile_friendly_fig(fig, wide_mode=True):
         margin=dict(l=40, r=40, t=60, b=60),
         hovermode="x unified",
         autosize=False,
-        width=1200 if wide_mode else None,  # make chart wider than container
-        height=500
+        width=1200 if wide_mode else None,
+        height=500,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5
+        )
     )
-    fig.update_traces(line=dict(width=3), marker=dict(size=8))  # smaller markers so they don’t overlap
-    fig.update_xaxes(fixedrange=False)  # allow scrolling/zooming on mobile
+    fig.update_traces(line=dict(width=3), marker=dict(size=8))
+    fig.update_xaxes(fixedrange=False)
     fig.update_yaxes(fixedrange=False)
     return fig
+
 
 # --------------------------
 # Single Year Chart
