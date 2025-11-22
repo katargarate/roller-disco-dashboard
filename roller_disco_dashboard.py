@@ -93,9 +93,9 @@ def mobile_friendly_fig(fig, wide_mode=True):
         yaxis_tickfont_size=12,
         margin=dict(l=40, r=40, t=140, b=60),
         hovermode="x unified",
-        autosize=False,
         width=1200 if wide_mode else None,
-        height=500,
+        autosize=True,  # allow Plotly to pick correct Y-axis
+        height=None,  # remove fixed height
         legend=dict(
             orientation="h",
             yanchor="bottom",
