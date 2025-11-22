@@ -212,7 +212,7 @@ if year_selected == "Overall":
             fig_multi.update_xaxes(autorange="reversed")
         fig_multi = mobile_friendly_fig(fig_multi, wide_mode=False)
         if chart_mode == "Absolute Tickets":
-        fig_multi.update_yaxes(rangemode="tozero")  # start at 0
+            fig_multi.update_yaxes(rangemode="tozero")  # start at 0
         fig_multi.update_layout(autosize=True)  # let Plotly pick the correct max Y
         st.plotly_chart(fig_multi, use_container_width=True)
 
